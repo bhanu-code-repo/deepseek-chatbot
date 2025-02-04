@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Search,
   Send,
@@ -21,25 +21,47 @@ export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [hasStartedChat, setHasStartedChat] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setSelectedFiles((prev) => [...prev, ...files]);
+  };
+
+  const removeFile = (fileName) => {
+    setSelectedFiles((prev) => prev.filter((file) => file.name !== fileName));
+  };
 
   const handleSendMessage = () => {
-    if (!query.trim()) return;
+    if (!query.trim() && selectedFiles.length === 0) return;
 
-    // Add user message
+    // Create message with content and files
     const newMessage = {
       id: Date.now(),
       text: query,
       isBot: false,
+      files: [...selectedFiles],
     };
 
     setMessages((prev) => [...prev, newMessage]);
     setQuery("");
+    setSelectedFiles([]);
 
     // Simulate bot response
     setTimeout(() => {
       const botResponse = {
         id: Date.now(),
-        text: "Thank you for your message. This is a simulated response from our professional service team. In a production environment, this would be connected to our enterprise-grade AI systems.",
+        text:
+          "Thank you for your message. I've received your " +
+          (newMessage.files.length > 0
+            ? `file${newMessage.files.length > 1 ? "s" : ""}`
+            : "message") +
+          ". In a production environment, this would be properly processed.",
         isBot: true,
       };
       setMessages((prev) => [...prev, botResponse]);
@@ -56,7 +78,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-white text-gray-900">
-      {/* Professional Sidebar */}
+      {/* Sidebar */}
       <aside
         className={`${
           isSidebarOpen ? "w-64" : "w-16"
@@ -136,7 +158,10 @@ export default function Dashboard() {
                   size={18}
                   className="absolute left-4 top-3.5 text-gray-400"
                 />
-                <button className="absolute right-14 top-2.5 text-gray-400 hover:text-gray-500 p-2">
+                <button
+                  className="absolute right-14 top-2.5 text-gray-400 hover:text-gray-500 p-2"
+                  onClick={handleFileUpload}
+                >
                   <Paperclip size={18} />
                 </button>
                 <button
@@ -145,6 +170,14 @@ export default function Dashboard() {
                 >
                   <Send size={18} />
                 </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={handleFileChange}
+                  multiple
+                  accept="image/*, .pdf, .doc, .docx, .txt"
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-2">
@@ -224,9 +257,25 @@ export default function Dashboard() {
                           : "bg-white border border-blue-100"
                       }`}
                     >
-                      <p className="text-gray-800 text-sm leading-relaxed">
-                        {message.text}
-                      </p>
+                      {message.text && (
+                        <p className="text-gray-800 text-sm leading-relaxed">
+                          {message.text}
+                        </p>
+                      )}
+                      {message.files?.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {message.files.map((file, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center bg-gray-100 rounded-lg p-2"
+                            >
+                              <span className="text-sm text-gray-600">
+                                {file.name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className="mt-2 flex justify-end">
                         <span className="text-xs text-gray-400">
                           {new Date(message.id).toLocaleTimeString([], {
@@ -244,7 +293,33 @@ export default function Dashboard() {
 
             {/* Chat Input */}
             <div className="border-t border-gray-100 p-4 bg-white">
+              {selectedFiles.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {selectedFiles.map((file) => (
+                    <div
+                      key={file.name}
+                      className="flex items-center bg-gray-50 rounded-lg px-3 py-1 text-sm"
+                    >
+                      <span className="text-gray-600 mr-2">{file.name}</span>
+                      <button
+                        onClick={() => removeFile(file.name)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="relative w-full max-w-3xl mx-auto">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={handleFileChange}
+                  multiple
+                  accept="image/*, .pdf, .doc, .docx, .txt"
+                />
                 <input
                   type="text"
                   className="w-full border border-gray-200 p-3 pl-11 pr-16 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 text-sm text-gray-700 placeholder-gray-400"
@@ -254,8 +329,9 @@ export default function Dashboard() {
                   onKeyDown={handleKeyPress}
                 />
                 <Paperclip
-                  className="absolute left-4 top-3.5 text-gray-400"
+                  className="absolute left-4 top-3.5 text-gray-400 cursor-pointer hover:text-gray-500"
                   size={18}
+                  onClick={handleFileUpload}
                 />
                 <button
                   onClick={handleSendMessage}
